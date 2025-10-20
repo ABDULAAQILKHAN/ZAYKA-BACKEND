@@ -1,3 +1,4 @@
+global.crypto = require('crypto');
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -15,7 +16,7 @@ export class AppFactory {
     app.enableCors();
 
     const config = new DocumentBuilder()
-      .setTitle('MyCerts')
+      .setTitle('Zayka API')
       .setDescription('API Docs')
       .setVersion('1.0')
       .addBearerAuth(
@@ -26,7 +27,7 @@ export class AppFactory {
             name: 'Authorization',
             in: 'header',
         },
-        'JWT-auth', // 👈 this is the key name
+        'JWT-auth',
       )
       .build();
 

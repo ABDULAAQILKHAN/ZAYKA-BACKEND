@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 //modules
 import { ProfileModule } from './profile/profile.module';
-import { CertificateModule } from './certificate/certificate.module';
+//import { CertificateModule } from './certificate/certificate.module';
 //entities
 import { Profile } from './profile/entities/profile.entity';
 import { Certificate } from './certificate/entities/certificate.entity';
@@ -20,13 +20,15 @@ import { Certificate } from './certificate/entities/certificate.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
-        ssl: true,
+        ssl: {
+          rejectUnauthorized: false, // for development only!
+        },
         entities: [Profile,Certificate],
         synchronize: true,
       }),
     }),
     ProfileModule,
-    CertificateModule,
+    //CertificateModule,
   ],
 })
 export class AppModule {}
