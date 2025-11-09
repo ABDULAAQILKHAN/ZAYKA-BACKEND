@@ -1,12 +1,22 @@
 // src/auth/guards/jwt-auth.guard.ts
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-constructor(private readonly configService: ConfigService) {}
+constructor(
+  private readonly configService: ConfigService,
+  private reflector: Reflector,
+) {}
   canActivate(context: ExecutionContext): boolean {
+    // Check if endpoint is marked as public
+    const isPublic = this.reflector.get<boolean>('isPublic', context.getHandler());
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
 
     const authHeader = request.headers['authorization'];
