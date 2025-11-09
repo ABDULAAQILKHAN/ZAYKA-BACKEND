@@ -1,4 +1,5 @@
-global.crypto = require('crypto');
+// Removed manual assignment to global.crypto; Node >= v15 already exposes a read-only Web Crypto API.
+// If you need classic Node crypto functions, import from 'node:crypto' where used.
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';

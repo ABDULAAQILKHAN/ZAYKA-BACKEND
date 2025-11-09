@@ -3,10 +3,9 @@ import { ProfileService } from './profile.service';
 import { ProfileController } from './profile.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Profile } from './entities/profile.entity';
-import { Certificate } from '../certificate/entities/certificate.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Profile, Certificate])
+    TypeOrmModule.forFeature([Profile])
   ],
   controllers: [ProfileController],
   providers: [ProfileService],

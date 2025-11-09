@@ -4,15 +4,12 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from './entities/profile.entity';
-import { Certificate } from '../certificate/entities/certificate.entity';
 
 @Injectable()
 export class ProfileService {
   constructor(
   @InjectRepository(Profile)
   private profileRepository: Repository<Profile>,
-  @InjectRepository(Certificate)
-  private readonly certificateRepository: Repository<Certificate>,
   ) {}
 
   async create(createProfileDto: CreateProfileDto) {
@@ -46,14 +43,11 @@ export class ProfileService {
     if (!profile) {
       throw new NotFoundException(`Profile with ID ${id} not found`);
     }
-    const certificates = await this.certificateRepository.findBy({ userId: id });
-    const totalCertificates = certificates.length;
+    const totalCertificates = 0;
     (profile as any).totalCertificates = totalCertificates;
-    const publicCertificates = certificates.filter(cert => cert.isPublic);
+    const publicCertificates = [];
     const totalPublicCertificates = publicCertificates.length;
     (profile as any).totalPublicCertificates = totalPublicCertificates;
-    const totalViews = publicCertificates.reduce((sum, cert) => sum + (cert.viewCount || 0), 0);
-    (profile as any).totalViews = totalViews;
     return profile;
   }
 
