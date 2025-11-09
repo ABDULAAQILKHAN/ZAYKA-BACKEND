@@ -12,7 +12,7 @@ export class Profile {
   userId: string;
 
   @ApiProperty({ example: 'John Doe', description: 'Full name of the user' })
-  @Column()
+  @Column({nullable: true})
   name: string;
 
   @ApiProperty({ example: 'john.doe@example.com', description: 'Email address' })

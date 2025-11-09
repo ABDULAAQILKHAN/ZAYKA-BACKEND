@@ -3,10 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 //modules
 import { ProfileModule } from './profile/profile.module';
-//import { CertificateModule } from './certificate/certificate.module';
 //entities
 import { Profile } from './profile/entities/profile.entity';
-import { Certificate } from './certificate/entities/certificate.entity';
 
 
 @Module({
@@ -23,12 +21,11 @@ import { Certificate } from './certificate/entities/certificate.entity';
         ssl: {
           rejectUnauthorized: false, // for development only!
         },
-        entities: [Profile,Certificate],
+        entities: [Profile],
         synchronize: true,
       }),
     }),
     ProfileModule,
-    //CertificateModule,
   ],
 })
 export class AppModule {}
