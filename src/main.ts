@@ -1,3 +1,6 @@
+import { webcrypto as crypto } from 'node:crypto';
+if (!globalThis.crypto) globalThis.crypto = crypto as Crypto;
+
 import { AppFactory } from './AppFactory';
 import { json, urlencoded } from 'express';
 
