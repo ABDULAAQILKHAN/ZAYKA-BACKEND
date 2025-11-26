@@ -5,10 +5,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ProfileModule } from './profile/profile.module';
 import { SpecialOffersModule } from './special-offers/special-offers.module';
 import { TodaysSpecialsModule } from './todays-specials/todays-specials.module';
+import { MenuCategoriesModule } from './menu-categories/menu-categories.module';
+import { MenuItemsModule } from './menu-items/menu-items.module';
 //entities
 import { Profile } from './profile/entities/profile.entity';
 import { SpecialOffer } from './special-offers/entities/special-offer.entity';
 import { TodaysSpecial } from './todays-specials/entities/todays-special.entity';
+import { MenuCategory } from './menu-categories/entities/menu-category.entity';
+import { MenuItem } from './menu-items/entities/menu-item.entity';
 
 
 @Module({
@@ -25,13 +29,15 @@ import { TodaysSpecial } from './todays-specials/entities/todays-special.entity'
         ssl: {
           rejectUnauthorized: false, // for development only!
         },
-        entities: [Profile, SpecialOffer, TodaysSpecial],
+        entities: [Profile, SpecialOffer, TodaysSpecial, MenuCategory, MenuItem],
         synchronize: true,
       }),
     }),
     ProfileModule,
     SpecialOffersModule,
     TodaysSpecialsModule,
+    MenuCategoriesModule,
+    MenuItemsModule,
   ],
 })
 export class AppModule {}
