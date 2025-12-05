@@ -17,16 +17,17 @@ export class ProfileService {
     const found = await this.profileRepository.findOneBy({ 
       userId: createProfileDto.sub 
     });
-    
     if (found) {
       throw new ConflictException('Profile already exists for this user');
     }
 
     const user = {
       userId: createProfileDto.sub,
-      name: createProfileDto.name,
+      name: createProfileDto.full_name,
       email: createProfileDto.email,
       phone: createProfileDto.phone,
+      avatar: createProfileDto.avatar,
+      isDark: createProfileDto.isDark ?? false,
     };
 
     const result = this.profileRepository.create(user);
