@@ -18,6 +18,7 @@ import { MenuItem } from './menu-items/entities/menu-item.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
+      envFilePath: '.env',
       isGlobal: true, // makes env available everywhere
     }),
     TypeOrmModule.forRootAsync({
