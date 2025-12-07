@@ -16,9 +16,13 @@ export class MenuItem {
   @Column({ type: 'text' })
   description: string;
 
-  @ApiProperty({ example: 15.99, description: 'Item price' })
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  price: number;
+  @ApiProperty({ example: 15.99, description: 'Full plate price' })
+  @Column({ name: 'full_price', type: 'decimal', precision: 10, scale: 2 })
+  fullPrice: number;
+
+  @ApiProperty({ example: 9.99, description: 'Half plate price (optional)', required: false })
+  @Column({ name: 'half_price', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  halfPrice?: number;
 
   @ApiProperty({ example: 'https://example.com/butter-chicken.jpg', description: 'Item image URL', required: false })
   @Column({ nullable: true })

@@ -24,8 +24,11 @@ export class MenuItem {
   @Column({ nullable: true })
   image: string;
 
-  // Store category ID for database relationship
-  @Column({ name: 'category_id', nullable: true })
+  @ApiProperty({ example: 15.99, description: 'Full plate price' })
+  fullPrice: number;
+
+  @ApiProperty({ example: 9.99, description: 'Half plate price', required: false })
+  halfPrice?: number;
   categoryId: string;
 
   // Virtual property - category name for API responses

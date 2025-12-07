@@ -37,10 +37,16 @@ export class CreateMenuItemDto {
   @Transform(({ value }) => value?.trim())
   description: string;
 
-  @ApiProperty({ example: 15.99, description: 'Item price' })
+  @ApiProperty({ example: 15.99, description: 'Full plate price' })
   @IsNumber()
-  @Min(0, { message: 'price must be a positive number' })
-  price: number;
+  @Min(0, { message: 'fullPrice must be a positive number' })
+  fullPrice: number;
+
+  @ApiProperty({ example: 9.99, description: 'Half plate price', required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: 'halfPrice must be a positive number' })
+  halfPrice?: number;
 
   @ApiProperty({ example: 'https://example.com/butter-chicken.jpg', description: 'Item image URL', required: false })
   @IsOptional()
