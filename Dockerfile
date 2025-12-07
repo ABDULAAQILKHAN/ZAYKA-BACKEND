@@ -24,7 +24,6 @@ COPY --from=build /app/package*.json ./
 RUN npm install --omit=dev
 
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/.env ./.env
 
 # Expose app port
 EXPOSE 4000
