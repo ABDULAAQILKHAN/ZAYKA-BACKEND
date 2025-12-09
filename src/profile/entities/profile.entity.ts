@@ -27,6 +27,10 @@ export class Profile {
   @Column({ nullable: true })
   avatar: string;
 
+  @ApiProperty({ example: '123 Main St, Mumbai', description: 'Default address string', required: false })
+  @Column({ name: 'default_address', type: 'text', nullable: true })
+  defaultAddress: string | null;
+  
   @ApiProperty({ example: false,  description: 'Boolean to define dark mode', required: false })
   @Column({ nullable: true })
   isDark: boolean;
