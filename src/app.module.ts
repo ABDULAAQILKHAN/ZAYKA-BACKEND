@@ -8,6 +8,7 @@ import { SpecialOffersModule } from './special-offers/special-offers.module';
 import { TodaysSpecialsModule } from './todays-specials/todays-specials.module';
 import { MenuCategoriesModule } from './menu-categories/menu-categories.module';
 import { MenuItemsModule } from './menu-items/menu-items.module';
+import { HealthModule } from './health/health.module';
 //entities
 import { Profile } from './profile/entities/profile.entity';
 import { SpecialOffer } from './special-offers/entities/special-offer.entity';
@@ -20,7 +21,6 @@ import { Address } from './address/entities/address.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '.env',
       isGlobal: true, // makes env available everywhere
     }),
     TypeOrmModule.forRootAsync({
@@ -29,11 +29,11 @@ import { Address } from './address/entities/address.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
+        entities: [Profile, Address, SpecialOffer, TodaysSpecial, MenuCategory, MenuItem],
+        synchronize: true, // Auto-create tables (dev only)
         ssl: {
           rejectUnauthorized: false, // for development only!
         },
-  entities: [Profile, SpecialOffer, TodaysSpecial, MenuCategory, MenuItem, Address],
-        synchronize: true,
       }),
     }),
   ProfileModule,
@@ -42,6 +42,7 @@ import { Address } from './address/entities/address.entity';
     TodaysSpecialsModule,
     MenuCategoriesModule,
     MenuItemsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
