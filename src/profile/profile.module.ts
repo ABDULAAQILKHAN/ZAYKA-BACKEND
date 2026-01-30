@@ -9,5 +9,6 @@ import { Profile } from './entities/profile.entity';
   ],
   controllers: [ProfileController],
   providers: [ProfileService],
+  exports: [ProfileService],
 })
 export class ProfileModule {}
