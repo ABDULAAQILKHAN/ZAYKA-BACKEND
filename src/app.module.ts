@@ -9,6 +9,7 @@ import { TodaysSpecialsModule } from './todays-specials/todays-specials.module';
 import { MenuCategoriesModule } from './menu-categories/menu-categories.module';
 import { MenuItemsModule } from './menu-items/menu-items.module';
 import { HealthModule } from './health/health.module';
+import { CartModule } from './cart/cart.module';
 //entities
 import { Profile } from './profile/entities/profile.entity';
 import { SpecialOffer } from './special-offers/entities/special-offer.entity';
@@ -16,6 +17,7 @@ import { TodaysSpecial } from './todays-specials/entities/todays-special.entity'
 import { MenuCategory } from './menu-categories/entities/menu-category.entity';
 import { MenuItem } from './menu-items/entities/menu-item.entity';
 import { Address } from './address/entities/address.entity';
+import { CartItem } from './cart/entities/cart-item.entity';
 
 
 @Module({
@@ -29,7 +31,7 @@ import { Address } from './address/entities/address.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
-        entities: [Profile, Address, SpecialOffer, TodaysSpecial, MenuCategory, MenuItem],
+        entities: [Profile, Address, SpecialOffer, TodaysSpecial, MenuCategory, MenuItem, CartItem],
         synchronize: true, // Auto-create tables (dev only)
         ssl: {
           rejectUnauthorized: false, // for development only!
@@ -43,6 +45,7 @@ import { Address } from './address/entities/address.entity';
     MenuCategoriesModule,
     MenuItemsModule,
     HealthModule,
+    CartModule,
   ],
 })
 export class AppModule {}
