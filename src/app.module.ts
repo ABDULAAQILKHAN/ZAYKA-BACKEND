@@ -11,6 +11,7 @@ import { MenuItemsModule } from './menu-items/menu-items.module';
 import { HealthModule } from './health/health.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
+import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
 //entities
 import { Profile } from './profile/entities/profile.entity';
 import { SpecialOffer } from './special-offers/entities/special-offer.entity';
@@ -50,6 +51,7 @@ import { OrderItem } from './orders/entities/order-item.entity';
     HealthModule,
     CartModule,
     OrdersModule,
+    AdminDashboardModule,
   ],
 })
 export class AppModule {}
