@@ -10,7 +10,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @ApiTags('Admin Dashboard')
 @Controller('admin/dashboard')
 @UseGuards(JwtAuthGuard, AdminRoleGuard)
-@Roles('admin', 'receptionist') // Giving access to receptionist too as they likely use dashboard
+@Roles('admin', 'manager') // Giving access to manager too as they likely use dashboard
 @ApiBearerAuth('JWT-auth')
 export class AdminDashboardController {
   constructor(private readonly adminDashboardService: AdminDashboardService) {}
