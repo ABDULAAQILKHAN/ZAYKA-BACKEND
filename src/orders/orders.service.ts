@@ -120,6 +120,16 @@ export class OrdersService {
   }
 
   /**
+   * Get orders by status (for rider)
+   */
+  async findByStatus(status: string): Promise<Order[]> {
+    return this.orderRepository.find({
+      where: { status: status as OrderStatus },
+      order: { createdAt: 'ASC' }, // Oldest first for FIFO delivery
+    });
+  }
+
+  /**
    * Get a single order by ID
    */
   async findOne(orderId: string, userId?: string): Promise<Order> {
