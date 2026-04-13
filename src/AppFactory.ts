@@ -14,11 +14,11 @@ export class AppFactory {
     const expressApp = express();
     const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
-  app.enableCors({
-        origin: 'http://localhost:3000',
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-        credentials: true,
-      });
+    app.enableCors({
+      origin: ['http://localhost:3000', 'https://zaykadarbar.vercel.app'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    });
 
     const config = new DocumentBuilder()
       .setTitle('Zayka API')
@@ -26,11 +26,11 @@ export class AppFactory {
       .setVersion('1.0')
       .addBearerAuth(
         {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-            name: 'Authorization',
-            in: 'header',
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'Authorization',
+          in: 'header',
         },
         'JWT-auth',
       )
