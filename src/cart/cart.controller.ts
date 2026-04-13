@@ -14,6 +14,7 @@ import { CartService } from './cart.service';
 import { AddCartItemDto, UpdateCartItemDto, SyncCartDto } from './dto';
 import { CartItem } from './entities/cart-item.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { getCurrentUser } from '../auth/helpers/get-current-user';
 
 @ApiTags('Cart')
 @Controller('cart')
@@ -25,8 +26,9 @@ export class CartController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get user cart' })
   @ApiResponse({ status: 200, description: 'Returns user cart items', type: [CartItem] })
-  async getCart(@Request() req): Promise<CartItem[]> {
-    return this.cartService.getCart(req.user.user_metadata.sub);
+  async getCart(@Request() req: any): Promise<CartItem[]> {
+    const user = getCurrentUser(req);
+    return this.cartService.getCart(user.id);
   }
 
   @Post('items')
@@ -34,11 +36,9 @@ export class CartController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Add item to cart' })
   @ApiResponse({ status: 201, description: 'Item added to cart', type: CartItem })
-  async addItem(
-    @Request() req,
-    @Body() addCartItemDto: AddCartItemDto,
-  ): Promise<CartItem> {
-    return this.cartService.addItem(req.user.user_metadata.sub, addCartItemDto);
+  async addItem(@Request() req: any, @Body() addCartItemDto: AddCartItemDto): Promise<CartItem> {
+    const user = getCurrentUser(req);
+    return this.cartService.addItem(user.id, addCartItemDto);
   }
 
   @Patch('items/:id')
@@ -48,11 +48,12 @@ export class CartController {
   @ApiResponse({ status: 200, description: 'Item quantity updated', type: CartItem })
   @ApiResponse({ status: 404, description: 'Cart item not found' })
   async updateItemQuantity(
-    @Request() req,
+    @Request() req: any,
     @Param('id') cartItemId: string,
     @Body() updateCartItemDto: UpdateCartItemDto,
   ): Promise<CartItem> {
-    return this.cartService.updateItemQuantity(req.user.user_metadata.sub, cartItemId, updateCartItemDto);
+    const user = getCurrentUser(req);
+    return this.cartService.updateItemQuantity(user.id, cartItemId, updateCartItemDto);
   }
 
   @Delete('items/:id')
@@ -61,11 +62,9 @@ export class CartController {
   @ApiOperation({ summary: 'Remove item from cart' })
   @ApiResponse({ status: 200, description: 'Item removed from cart' })
   @ApiResponse({ status: 404, description: 'Cart item not found' })
-  async removeItem(
-    @Request() req,
-    @Param('id') cartItemId: string,
-  ): Promise<{ success: boolean; id: string }> {
-    return this.cartService.removeItem(req.user.user_metadata.sub, cartItemId);
+  async removeItem(@Request() req: any, @Param('id') cartItemId: string): Promise<{ success: boolean; id: string }> {
+    const user = getCurrentUser(req);
+    return this.cartService.removeItem(user.id, cartItemId);
   }
 
   @Delete()
@@ -73,8 +72,9 @@ export class CartController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Clear cart' })
   @ApiResponse({ status: 200, description: 'Cart cleared' })
-  async clearCart(@Request() req): Promise<{ success: boolean }> {
-    return this.cartService.clearCart(req.user.user_metadata.sub);
+  async clearCart(@Request() req: any): Promise<{ success: boolean }> {
+    const user = getCurrentUser(req);
+    return this.cartService.clearCart(user.id);
   }
 
   @Post('sync')
@@ -82,10 +82,8 @@ export class CartController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Sync cart from local storage' })
   @ApiResponse({ status: 200, description: 'Cart synced successfully', type: [CartItem] })
-  async syncCart(
-    @Request() req,
-    @Body() syncCartDto: SyncCartDto,
-  ): Promise<CartItem[]> {
-    return this.cartService.syncCart(req.user.user_metadata.sub, syncCartDto);
+  async syncCart(@Request() req: any, @Body() syncCartDto: SyncCartDto): Promise<CartItem[]> {
+    const user = getCurrentUser(req);
+    return this.cartService.syncCart(user.id, syncCartDto);
   }
 }

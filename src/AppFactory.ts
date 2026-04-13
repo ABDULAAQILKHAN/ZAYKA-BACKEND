@@ -14,7 +14,11 @@ export class AppFactory {
     const expressApp = express();
     const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
-    app.enableCors();
+  app.enableCors({
+        origin: 'http://localhost:3000',
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        credentials: true,
+      });
 
     const config = new DocumentBuilder()
       .setTitle('Zayka API')

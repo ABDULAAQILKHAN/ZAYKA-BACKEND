@@ -1,93 +1,137 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { MenuItem } from './entities/menu-item.entity';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
 import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
+import { createAdminClient } from '../lib/supabase-server';
+import { handleSupabaseError, mapMenuItemRow } from '../lib/supabase-mappers';
 
 @Injectable()
 export class MenuItemsService {
-  constructor(
-    @InjectRepository(MenuItem)
-    private menuItemRepository: Repository<MenuItem>,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
 
-  async create(createMenuItemDto: CreateMenuItemDto): Promise<MenuItem> {
-    const item = this.menuItemRepository.create(createMenuItemDto);
-    return await this.menuItemRepository.save(item);
+  private get client() {
+    return createAdminClient(this.configService);
   }
 
-  async findAll(
-    categoryId?: string,
-    available?: boolean,
-    search?: string
-  ): Promise<MenuItem[]> {
-    const queryBuilder = this.menuItemRepository
-      .createQueryBuilder('item')
-      .leftJoinAndSelect('item.categoryRelation', 'category')
-      .orderBy('item.name', 'ASC');
+  async create(createMenuItemDto: CreateMenuItemDto): Promise<MenuItem> {
+    const payload = {
+      name: createMenuItemDto.name,
+      description: createMenuItemDto.description,
+      full_price: createMenuItemDto.fullPrice,
+      half_price: createMenuItemDto.halfPrice ?? null,
+      image: createMenuItemDto.image ?? null,
+      category_id: createMenuItemDto.categoryId ?? null,
+      is_veg: createMenuItemDto.isVeg ?? false,
+      is_spicy: createMenuItemDto.isSpicy ?? false,
+      is_available: createMenuItemDto.isAvailable ?? true,
+      ingredients: createMenuItemDto.ingredients ?? null,
+      allergens: createMenuItemDto.allergens ?? null,
+      nutritional_info: createMenuItemDto.nutritionalInfo ?? null,
+      preparation_time: createMenuItemDto.preparationTime ?? null,
+    };
 
-    // Filter by category ID
+    const { data, error } = await this.client
+      .from('menu_items')
+      .insert(payload)
+      .select('*, menu_categories(id, name)')
+      .single();
+
+    handleSupabaseError(error, 'Failed to create menu item');
+    return mapMenuItemRow(data) as MenuItem;
+  }
+
+  async findAll(categoryId?: string, available?: boolean, search?: string): Promise<MenuItem[]> {
+    let query = this.client
+      .from('menu_items')
+      .select('*, menu_categories(id, name)')
+      .order('name', { ascending: true });
+
     if (categoryId) {
-      queryBuilder.andWhere('item.category_id = :categoryId', { categoryId });
+      query = query.eq('category_id', categoryId);
     }
 
-    // Filter by availability
     if (available !== undefined) {
-      queryBuilder.andWhere('item.is_available = :available', { available });
+      query = query.eq('is_available', available);
     }
 
-    // Search by name or description
     if (search) {
-      queryBuilder.andWhere(
-        '(LOWER(item.name) LIKE LOWER(:search) OR LOWER(item.description) LIKE LOWER(:search))',
-        { search: `%${search}%` }
-      );
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
-    const items = await queryBuilder.getMany();
-    
-    // Map the response to include category name
-    return items.map(item => ({
-      ...item,
-      category: item.categoryRelation?.name || null,
-      categoryRelation: undefined
-    })) as any;
+    const { data, error } = await query;
+
+    handleSupabaseError(error, 'Failed to fetch menu items');
+    return (data ?? []).map(mapMenuItemRow) as MenuItem[];
   }
 
   async findOne(id: string): Promise<MenuItem> {
-    const item = await this.menuItemRepository.findOne({
-      where: { id },
-      relations: ['categoryRelation']
-    });
+    const { data, error } = await this.client
+      .from('menu_items')
+      .select('*, menu_categories(id, name)')
+      .eq('id', id)
+      .single();
 
-    if (!item) {
+    if (error || !data) {
       throw new NotFoundException(`Menu item with ID "${id}" not found`);
     }
 
-    // Map the response to include category name
-    return {
-      ...item,
-      category: item.categoryRelation?.name || null,
-      categoryRelation: undefined
-    } as any;
+    return mapMenuItemRow(data) as MenuItem;
   }
 
   async update(id: string, updateMenuItemDto: UpdateMenuItemDto): Promise<MenuItem> {
-    const item = await this.findOne(id);
-    Object.assign(item, updateMenuItemDto);
-    return await this.menuItemRepository.save(item);
+    await this.findOne(id);
+
+    const payload: Record<string, unknown> = {};
+    if (updateMenuItemDto.name !== undefined) payload.name = updateMenuItemDto.name;
+    if (updateMenuItemDto.description !== undefined) payload.description = updateMenuItemDto.description;
+    if (updateMenuItemDto.fullPrice !== undefined) payload.full_price = updateMenuItemDto.fullPrice;
+    if (updateMenuItemDto.halfPrice !== undefined) payload.half_price = updateMenuItemDto.halfPrice;
+    if (updateMenuItemDto.image !== undefined) payload.image = updateMenuItemDto.image;
+    if (updateMenuItemDto.categoryId !== undefined) payload.category_id = updateMenuItemDto.categoryId;
+    if (updateMenuItemDto.isVeg !== undefined) payload.is_veg = updateMenuItemDto.isVeg;
+    if (updateMenuItemDto.isSpicy !== undefined) payload.is_spicy = updateMenuItemDto.isSpicy;
+    if (updateMenuItemDto.isAvailable !== undefined) payload.is_available = updateMenuItemDto.isAvailable;
+    if (updateMenuItemDto.ingredients !== undefined) payload.ingredients = updateMenuItemDto.ingredients;
+    if (updateMenuItemDto.allergens !== undefined) payload.allergens = updateMenuItemDto.allergens;
+    if (updateMenuItemDto.nutritionalInfo !== undefined) payload.nutritional_info = updateMenuItemDto.nutritionalInfo;
+    if (updateMenuItemDto.preparationTime !== undefined) payload.preparation_time = updateMenuItemDto.preparationTime;
+
+    const { data, error } = await this.client
+      .from('menu_items')
+      .update(payload)
+      .eq('id', id)
+      .select('*, menu_categories(id, name)')
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException(`Menu item with ID "${id}" not found`);
+    }
+
+    return mapMenuItemRow(data) as MenuItem;
   }
 
   async toggleAvailability(id: string): Promise<MenuItem> {
     const item = await this.findOne(id);
-    item.isAvailable = !item.isAvailable;
-    return await this.menuItemRepository.save(item);
+
+    const { data, error } = await this.client
+      .from('menu_items')
+      .update({ is_available: !item.isAvailable })
+      .eq('id', id)
+      .select('*, menu_categories(id, name)')
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException(`Menu item with ID "${id}" not found`);
+    }
+
+    return mapMenuItemRow(data) as MenuItem;
   }
 
   async remove(id: string): Promise<{ message: string }> {
     const item = await this.findOne(id);
-    await this.menuItemRepository.remove(item);
+    const { error } = await this.client.from('menu_items').delete().eq('id', id);
+    handleSupabaseError(error, 'Failed to delete menu item');
     return { message: `Menu item "${item.name}" deleted successfully` };
   }
 }

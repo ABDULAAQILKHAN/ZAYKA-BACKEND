@@ -2,8 +2,8 @@ import { Controller, Get, Post, Patch, Delete, Body, UseGuards, Req, Param, Put 
 import { ApiBody } from '@nestjs/swagger';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AddressService } from './address.service';
-import { AddressesDto } from './dto/address.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { getCurrentUser } from '../auth/helpers/get-current-user';
 
 @ApiTags('address')
 @ApiBearerAuth('JWT-auth')
@@ -12,14 +12,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class AddressController {
   constructor(private readonly addressService: AddressService) {}
 
-  // List addresses for authenticated user
   @Get()
   async list(@Req() req: any) {
-    const userId = req.user?.sub;
-    return await this.addressService.list(userId);
+    const user = getCurrentUser(req);
+    return this.addressService.list(user.id);
   }
 
-  // Create new address
   @Post()
   @ApiBody({
     schema: {
@@ -32,12 +30,10 @@ export class AddressController {
     },
   })
   async create(@Req() req: any, @Body('value') value: string, @Body('makeDefault') makeDefault?: boolean) {
-    const userId = req.user?.sub;
-  // Requirement: creation sets default, ignoring makeDefault
-  return await this.addressService.create(userId, value, true);
+    const user = getCurrentUser(req);
+    return this.addressService.create(user.id, value, makeDefault ?? true);
   }
 
-  // Add new address for same user (PUT/PATCH)
   @Put()
   @Patch()
   @ApiBody({
@@ -50,22 +46,20 @@ export class AddressController {
     },
   })
   async add(@Req() req: any, @Body('value') value: string) {
-    const userId = req.user?.sub;
-    return await this.addressService.add(userId, value);
+    const user = getCurrentUser(req);
+    return this.addressService.add(user.id, value);
   }
 
-  // Delete an address by index
   @Delete(':index')
   async deleteByIndex(@Req() req: any, @Param('index') index: string) {
-    const userId = req.user?.sub;
-    return await this.addressService.deleteByIndex(userId, Number(index));
+    const user = getCurrentUser(req);
+    return this.addressService.deleteByIndex(user.id, Number(index));
   }
 
-  // Mark existing address default by index
   @Put(':index/default')
   @Patch(':index/default')
   async setDefaultByIndex(@Req() req: any, @Param('index') index: string) {
-    const userId = req.user?.sub;
-    return await this.addressService.setDefaultByIndex(userId, Number(index));
+    const user = getCurrentUser(req);
+    return this.addressService.setDefaultByIndex(user.id, Number(index));
   }
 }

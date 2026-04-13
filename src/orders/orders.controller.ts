@@ -15,6 +15,7 @@ import { Order } from './entities/order.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminRoleGuard } from '../auth/guards/admin-role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { getCurrentUser } from '../auth/helpers/get-current-user';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -28,11 +29,9 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: 'Order created successfully', type: Order })
   @ApiResponse({ status: 400, description: 'Cart is empty or invalid data' })
   @ApiResponse({ status: 404, description: 'Address or profile not found' })
-  async create(
-    @Request() req,
-    @Body() createOrderDto: CreateOrderDto,
-  ): Promise<Order> {
-    return this.ordersService.create(req.user.user_metadata.sub, createOrderDto);
+  async create(@Request() req: any, @Body() createOrderDto: CreateOrderDto): Promise<Order> {
+    const user = getCurrentUser(req);
+    return this.ordersService.create(user.id, createOrderDto);
   }
 
   @Get('my')
@@ -40,8 +39,9 @@ export class OrdersController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get my orders (customer)' })
   @ApiResponse({ status: 200, description: 'Orders retrieved successfully', type: [Order] })
-  async findMyOrders(@Request() req): Promise<Order[]> {
-    return this.ordersService.findMyOrders(req.user.user_metadata.sub);
+  async findMyOrders(@Request() req: any): Promise<Order[]> {
+    const user = getCurrentUser(req);
+    return this.ordersService.findMyOrders(user.id);
   }
 
   @Get()
@@ -59,11 +59,9 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get order by ID' })
   @ApiResponse({ status: 200, description: 'Order retrieved successfully', type: Order })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  async findOne(
-    @Request() req,
-    @Param('id') id: string,
-  ): Promise<Order> {
-    return this.ordersService.findOne(id, req.user.user_metadata.sub);
+  async findOne(@Request() req: any, @Param('id') id: string): Promise<Order> {
+    const user = getCurrentUser(req);
+    return this.ordersService.findOne(id, user.id);
   }
 
   @Patch(':id/status')
@@ -73,10 +71,7 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Order status updated', type: Order })
   @ApiResponse({ status: 400, description: 'Invalid status transition' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() updateStatusDto: UpdateOrderStatusDto,
-  ): Promise<Order> {
+  async updateStatus(@Param('id') id: string, @Body() updateStatusDto: UpdateOrderStatusDto): Promise<Order> {
     return this.ordersService.updateStatus(id, updateStatusDto);
   }
 
@@ -87,16 +82,10 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Order cancelled successfully', type: Order })
   @ApiResponse({ status: 400, description: 'Order cannot be cancelled' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  async cancel(
-    @Request() req,
-    @Param('id') id: string,
-  ): Promise<Order> {
-    return this.ordersService.cancel(id, req.user.user_metadata.sub);
+  async cancel(@Request() req: any, @Param('id') id: string): Promise<Order> {
+    const user = getCurrentUser(req);
+    return this.ordersService.cancel(id, user.id);
   }
-
-  // =====================
-  // Rider Endpoints
-  // =====================
 
   @Get('rider/ready')
   @UseGuards(JwtAuthGuard, AdminRoleGuard)

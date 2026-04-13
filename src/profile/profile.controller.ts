@@ -1,35 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Put, Param, Delete, UseGuards, Request, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Put, Delete, UseGuards, Request, Param, Body } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Profile } from './entities/profile.entity';
+import { getCurrentUser } from '../auth/helpers/get-current-user';
 
 @ApiTags('Profile')
 @Controller('profile')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  @Post()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new profile' })
-  @ApiResponse({ status: 201, description: 'Profile created successfully', type: Profile })
-  @ApiResponse({ status: 409, description: 'Profile already exists for this user' })
-  create(@Request() req) {
-    const user = req.user;
-    return this.profileService.create(user.user_metadata);
-  }
-
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get profile by ID' })
+  @ApiOperation({ summary: 'Get profile by authenticated user ID' })
   @ApiResponse({ status: 200, description: 'Profile retrieved successfully', type: Profile })
   @ApiResponse({ status: 404, description: 'Profile not found' })
-  findOne(@Request() req) {
-    const id = req.user.user_metadata.sub;
-    return this.profileService.findOne(id);
+  findOne(@Request() req: any) {
+    const user = getCurrentUser(req);
+    return this.profileService.findOne(user.id);
   }
 
   @Patch()
@@ -38,31 +28,31 @@ export class ProfileController {
   @ApiOperation({ summary: 'Update profile' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully', type: Profile })
   @ApiResponse({ status: 404, description: 'Profile not found' })
-  update(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
-    const id = req.user.user_metadata.sub;
-    return this.profileService.update(id, updateProfileDto);
+  update(@Request() req: any, @Body() updateProfileDto: UpdateProfileDto) {
+    const user = getCurrentUser(req);
+    return this.profileService.update(user.id, updateProfileDto);
   }
 
-  @Put("/theme")
+  @Put('/theme')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Update theme' })
+  @ApiOperation({ summary: 'Toggle theme' })
   @ApiResponse({ status: 200, description: 'Profile theme updated successfully', type: Profile })
   @ApiResponse({ status: 404, description: 'Profile not found' })
-  updateTheme(@Request() req) {
-    const id = req.user.user_metadata.sub;
-    return this.profileService.updateTheme(id);
+  updateTheme(@Request() req: any) {
+    const user = getCurrentUser(req);
+    return this.profileService.updateTheme(user.id);
   }
 
-  @Get("/theme")
+  @Get('/theme')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get user theme' })
   @ApiResponse({ status: 200, description: 'Profile theme fetched successfully', type: Profile })
   @ApiResponse({ status: 404, description: 'Profile not found' })
-  getTheme(@Request() req) {
-    const id = req.user.user_metadata.sub;
-    return this.profileService.getTheme(id);
+  getTheme(@Request() req: any) {
+    const user = getCurrentUser(req);
+    return this.profileService.getTheme(user.id);
   }
 
   @Delete(':id')

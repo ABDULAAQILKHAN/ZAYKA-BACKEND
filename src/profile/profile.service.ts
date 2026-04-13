@@ -1,71 +1,83 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { CreateProfileDto } from './dto/create-profile.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Profile } from './entities/profile.entity';
+import { createAdminClient } from '../lib/supabase-server';
+import { handleSupabaseError, mapProfileRow } from '../lib/supabase-mappers';
 
 @Injectable()
 export class ProfileService {
-  constructor(
-  @InjectRepository(Profile)
-  private profileRepository: Repository<Profile>,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
 
-  async create(createProfileDto: CreateProfileDto) {
-    // Check if profile already exists
-    const found = await this.profileRepository.findOneBy({ 
-      userId: createProfileDto.sub 
-    });
-    if (found) {
-      throw new ConflictException('Profile already exists for this user');
-    }
-
-    const user = {
-      userId: createProfileDto.sub,
-      name: createProfileDto.full_name,
-      email: createProfileDto.email,
-      phone: createProfileDto.phone,
-      avatar: createProfileDto.avatar,
-      isDark: createProfileDto.isDark ?? false,
-    };
-
-    const result = this.profileRepository.create(user);
-    return await this.profileRepository.save(result);
+  private get client() {
+    return createAdminClient(this.configService);
   }
 
   async findAll() {
-    return await this.profileRepository.find();
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    handleSupabaseError(error, 'Failed to fetch profiles');
+    return (data ?? []).map(mapProfileRow);
   }
 
   async findOne(id: string) {
-    const profile = await this.profileRepository.findOneBy({ userId: id });
-    
-    if (!profile) {
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('*')
+      .eq('user_id', id)
+      .single();
+
+    if (error || !data) {
       throw new NotFoundException(`Profile with ID ${id} not found`);
     }
-    const totalCertificates = 0;
-    (profile as any).totalCertificates = totalCertificates;
-    const publicCertificates = [];
-    const totalPublicCertificates = publicCertificates.length;
-    (profile as any).totalPublicCertificates = totalPublicCertificates;
+
+    const profile = mapProfileRow(data);
+    (profile as any).totalCertificates = 0;
+    (profile as any).totalPublicCertificates = 0;
     return profile;
   }
 
   async update(id: string, updateProfileDto: UpdateProfileDto) {
-    const profile = await this.findOne(id);
-    
-    // Create a copy of updateProfileDto and remove id and userId fields to prevent updates
-    const { id: _, sub: __, email: ___ , ...updateData } = updateProfileDto as any;
-    Object.assign(profile, updateData);
-    return await this.profileRepository.save(profile);
+    const { id: _, sub: __, email: ___, ...updateData } = updateProfileDto as any;
+
+    const payload: Record<string, unknown> = {};
+    if (updateData.name !== undefined) payload.name = updateData.name;
+    if (updateData.phone !== undefined) payload.phone = updateData.phone;
+    if (updateData.avatar !== undefined) payload.avatar = updateData.avatar;
+    if (updateData.defaultAddress !== undefined) payload.default_address = updateData.defaultAddress;
+    if (updateData.isDark !== undefined) payload.is_dark = updateData.isDark;
+
+    const { data, error } = await this.client
+      .from('profiles')
+      .update(payload)
+      .eq('user_id', id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException(`Profile with ID ${id} not found`);
+    }
+
+    return mapProfileRow(data);
   }
 
   async updateTheme(id: string) {
     const profile = await this.findOne(id);
 
-    profile.isDark = !profile.isDark;
-    return await this.profileRepository.save(profile);
+    const { data, error } = await this.client
+      .from('profiles')
+      .update({ is_dark: !profile.isDark })
+      .eq('user_id', id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException(`Profile with ID ${id} not found`);
+    }
+
+    return mapProfileRow(data);
   }
 
   async getTheme(id: string) {
@@ -74,7 +86,8 @@ export class ProfileService {
   }
 
   async remove(id: string) {
-    const profile = await this.findOne(id);
-    return await this.profileRepository.remove(profile);
+    const { error } = await this.client.from('profiles').delete().eq('user_id', id);
+    handleSupabaseError(error, 'Failed to delete profile');
+    return { message: `Profile with ID ${id} deleted successfully` };
   }
 }
