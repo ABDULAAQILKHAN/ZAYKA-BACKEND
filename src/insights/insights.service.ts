@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createAdminClient } from '../lib/supabase-server';
 import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class InsightsService {
@@ -65,9 +66,10 @@ export class InsightsService {
 
     const dailyRevenueMap = new Map<string, number>();
     (dailyData ?? []).forEach(o => {
-      const date = o.created_at.split('T')[0];
+      const camelOrder = toCamelCase(o);
+      const date = camelOrder.createdAt.split('T')[0];
       const current = dailyRevenueMap.get(date) || 0;
-      dailyRevenueMap.set(date, current + Number(o.total));
+      dailyRevenueMap.set(date, current + Number(camelOrder.total));
     });
 
     const dailyRevenue = Array.from(dailyRevenueMap.entries())

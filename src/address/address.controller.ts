@@ -50,16 +50,16 @@ export class AddressController {
     return this.addressService.add(user.id, value);
   }
 
-  @Delete(':index')
-  async deleteByIndex(@Req() req: any, @Param('index') index: string) {
+  @Delete(':id')
+  async delete(@Req() req: any, @Param('id') id: string) {
     const user = getCurrentUser(req);
-    return this.addressService.deleteByIndex(user.id, Number(index));
+    return this.addressService.delete(user.id, id);
   }
 
-  @Put(':index/default')
-  @Patch(':index/default')
-  async setDefaultByIndex(@Req() req: any, @Param('index') index: string) {
+  @Put(':id/default')
+  @Patch(':id/default')
+  async setDefault(@Req() req: any, @Param('id') id: string) {
     const user = getCurrentUser(req);
-    return this.addressService.setDefaultByIndex(user.id, Number(index));
+    return this.addressService.setDefault(user.id, id);
   }
 }

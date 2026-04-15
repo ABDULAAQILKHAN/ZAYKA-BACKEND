@@ -2,10 +2,11 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { Session, SessionStatus } from './entities/session.entity';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapOrderRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
 import { TablesService } from '../tables/tables.service';
 import { TableStatus } from '../tables/entities/table.entity';
 import { InvoicesService } from '../invoices/invoices.service';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class SessionsService {
@@ -29,7 +30,7 @@ export class SessionsService {
     const { data, error } = await query;
     handleSupabaseError(error, 'Failed to fetch sessions');
 
-    return (data ?? []).map(row => this.mapSessionRow(row));
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOne(id: string): Promise<any> {
@@ -43,8 +44,10 @@ export class SessionsService {
       throw new NotFoundException(`Session with ID ${id} not found`);
     }
 
-    const session = this.mapSessionRow(data);
-    (session as any).table = data.tables;
+    const session = toCamelCase(data);
+    if (data.tables) {
+      session.table = toCamelCase(data.tables);
+    }
 
     // Fetch orders for this session
     const { data: orders, error: ordersError } = await this.client
@@ -53,7 +56,7 @@ export class SessionsService {
       .eq('session_id', id);
     
     handleSupabaseError(ordersError, 'Failed to fetch session orders');
-    (session as any).orders = (orders ?? []).map(mapOrderRow);
+    session.orders = (orders ?? []).map(row => toCamelCase(row));
 
     return session;
   }
@@ -65,12 +68,14 @@ export class SessionsService {
     }
 
     // 1. Mark session as closed
+    const payload = toSnakeCase({
+      status: SessionStatus.CLOSED,
+      closedAt: new Date().toISOString(),
+    });
+
     const { data: updatedSession, error: sessionError } = await this.client
       .from('sessions')
-      .update({
-        status: SessionStatus.CLOSED,
-        closed_at: new Date().toISOString(),
-      })
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
@@ -96,7 +101,7 @@ export class SessionsService {
       paymentMethod: 'cash', // Default
     });
 
-    return this.mapSessionRow(updatedSession);
+    return toCamelCase(updatedSession);
   }
 
   async findOrCreateActiveSession(tableId: string): Promise<Session> {
@@ -108,15 +113,17 @@ export class SessionsService {
       .maybeSingle();
 
     if (existing) {
-      return this.mapSessionRow(existing);
+      return toCamelCase(existing);
     }
+
+    const payload = toSnakeCase({
+      tableId,
+      status: SessionStatus.OPEN,
+    });
 
     const { data, error: insertError } = await this.client
       .from('sessions')
-      .insert({
-        table_id: tableId,
-        status: SessionStatus.OPEN,
-      })
+      .insert(payload)
       .select()
       .single();
 
@@ -125,19 +132,6 @@ export class SessionsService {
     // Update table status to occupied
     await this.tablesService.update(tableId, { status: TableStatus.OCCUPIED });
 
-    return this.mapSessionRow(data);
-  }
-
-  private mapSessionRow(row: any): Session {
-    if (!row) return row;
-    return {
-      id: row.id,
-      tableId: row.table_id,
-      status: row.status,
-      openedAt: row.opened_at,
-      closedAt: row.closed_at,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return toCamelCase(data);
   }
 }

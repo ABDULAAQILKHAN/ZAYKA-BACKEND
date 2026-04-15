@@ -21,7 +21,7 @@ export class MenuController {
       id: item.id,
       name: item.name,
       price: item.fullPrice,
-      is_available: item.isAvailable,
+      isAvailable: item.isAvailable,
     }));
   }
 }

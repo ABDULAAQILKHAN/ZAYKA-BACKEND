@@ -4,7 +4,8 @@ import { CartItem } from './entities/cart-item.entity';
 import { AddCartItemDto, UpdateCartItemDto, SyncCartDto, CartItemSize } from './dto';
 import { MenuItemsService } from '../menu-items/menu-items.service';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapCartItemRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class CartService {
@@ -25,7 +26,7 @@ export class CartService {
       .order('created_at', { ascending: true });
 
     handleSupabaseError(error, 'Failed to fetch cart');
-    return (data ?? []).map(mapCartItemRow) as CartItem[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async addItem(userId: string, addCartItemDto: AddCartItemDto): Promise<CartItem> {
@@ -59,26 +60,28 @@ export class CartService {
         .single();
 
       handleSupabaseError(error, 'Failed to update cart item quantity');
-      return mapCartItemRow(data) as CartItem;
+      return toCamelCase(data);
     }
+
+    const payload = toSnakeCase({
+      cartItemId,
+      userId,
+      id: menuItemId,
+      name,
+      price,
+      image: menuItem.image,
+      quantity,
+      size,
+    });
 
     const { data, error } = await this.client
       .from('cart_items')
-      .insert({
-        cart_item_id: cartItemId,
-        user_id: userId,
-        id: menuItemId,
-        name,
-        price,
-        image: menuItem.image,
-        quantity,
-        size,
-      })
+      .insert(payload)
       .select('*')
       .single();
 
     handleSupabaseError(error, 'Failed to create cart item');
-    return mapCartItemRow(data) as CartItem;
+    return toCamelCase(data);
   }
 
   async updateItemQuantity(userId: string, cartItemId: string, updateCartItemDto: UpdateCartItemDto): Promise<CartItem> {
@@ -94,41 +97,36 @@ export class CartService {
       throw new NotFoundException(`Cart item with ID ${cartItemId} not found`);
     }
 
-    return mapCartItemRow(data) as CartItem;
+    return toCamelCase(data);
   }
 
   async removeItem(userId: string, cartItemId: string): Promise<{ success: boolean; id: string }> {
-    const { data, error } = await this.client
+    const { error } = await this.client
       .from('cart_items')
       .delete()
       .eq('cart_item_id', cartItemId)
-      .eq('user_id', userId)
-      .select('cart_item_id');
+      .eq('user_id', userId);
 
-    if (error) {
-      handleSupabaseError(error, 'Failed to remove cart item');
-    }
-
-    if (!data || data.length === 0) {
-      throw new NotFoundException(`Cart item with ID ${cartItemId} not found`);
-    }
-
+    handleSupabaseError(error, 'Failed to remove cart item');
     return { success: true, id: cartItemId };
   }
 
-  async clearCart(userId: string): Promise<{ success: boolean }> {
-    const { error } = await this.client.from('cart_items').delete().eq('user_id', userId);
-    handleSupabaseError(error, 'Failed to clear cart');
-    return { success: true };
-  }
-
   async syncCart(userId: string, syncCartDto: SyncCartDto): Promise<CartItem[]> {
-    const { items } = syncCartDto;
+    // 1. Clear current cart
+    await this.clearCart(userId);
 
-    for (const item of items) {
-      await this.addItem(userId, item);
+    // 2. Insert new items
+    if (syncCartDto.items && syncCartDto.items.length > 0) {
+      const payload = syncCartDto.items.map(item => toSnakeCase({ ...item, userId }));
+      const { error } = await this.client.from('cart_items').insert(payload);
+      handleSupabaseError(error, 'Failed to sync cart items');
     }
 
     return this.getCart(userId);
+  }
+
+  async clearCart(userId: string): Promise<void> {
+    const { error } = await this.client.from('cart_items').delete().eq('user_id', userId);
+    handleSupabaseError(error, 'Failed to clear cart');
   }
 }

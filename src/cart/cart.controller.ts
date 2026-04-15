@@ -74,7 +74,8 @@ export class CartController {
   @ApiResponse({ status: 200, description: 'Cart cleared' })
   async clearCart(@Request() req: any): Promise<{ success: boolean }> {
     const user = getCurrentUser(req);
-    return this.cartService.clearCart(user.id);
+    await this.cartService.clearCart(user.id);
+    return { success: true };
   }
 
   @Post('sync')

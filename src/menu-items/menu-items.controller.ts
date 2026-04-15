@@ -1,12 +1,12 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
   Put,
-  Patch, 
-  Param, 
-  Delete, 
+  Patch,
+  Param,
+  Delete,
   UseGuards,
   Query
 } from '@nestjs/common';
@@ -22,7 +22,7 @@ import { MenuItem } from './entities/menu-item.entity';
 @ApiTags('Menu Items')
 @Controller('menu-items')
 export class MenuItemsController {
-  constructor(private readonly menuItemsService: MenuItemsService) {}
+  constructor(private readonly menuItemsService: MenuItemsService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
@@ -72,7 +72,7 @@ export class MenuItemsController {
 
   @Patch(':id/availability')
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @Roles('admin')
+  @Roles('admin', 'manager', 'staff')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Toggle menu item availability (Admin only)' })
   @ApiResponse({ status: 200, description: 'Availability toggled successfully', type: MenuItem })

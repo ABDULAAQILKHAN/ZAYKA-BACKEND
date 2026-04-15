@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Address } from './entities/address.entity';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapAddressRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class AddressService {
@@ -21,13 +22,15 @@ export class AddressService {
       .order('updated_at', { ascending: false });
 
     handleSupabaseError(error, 'Failed to fetch addresses');
-    return (data ?? []).map(mapAddressRow) as Address[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async create(userId: string, value: string, makeDefault = false): Promise<Address> {
+    const payload = toSnakeCase({ userId, value, isDefault: false });
+    
     const { data, error } = await this.client
       .from('addresses')
-      .insert({ user_id: userId, value, is_default: false })
+      .insert(payload)
       .select('*')
       .single();
 
@@ -37,18 +40,20 @@ export class AddressService {
       await this.setDefault(userId, data.id);
     }
 
-    return mapAddressRow(data) as Address;
+    return toCamelCase(data);
   }
 
   async add(userId: string, value: string): Promise<Address> {
+    const payload = toSnakeCase({ userId, value, isDefault: false });
+
     const { data, error } = await this.client
       .from('addresses')
-      .insert({ user_id: userId, value, is_default: false })
+      .insert(payload)
       .select('*')
       .single();
 
     handleSupabaseError(error, 'Failed to add address');
-    return mapAddressRow(data) as Address;
+    return toCamelCase(data);
   }
 
   async update(userId: string, addressId: string, value: string): Promise<Address> {
@@ -64,7 +69,7 @@ export class AddressService {
       throw new NotFoundException('Address not found');
     }
 
-    return mapAddressRow(data) as Address;
+    return toCamelCase(data);
   }
 
   async remove(userId: string): Promise<{ message: string }> {
@@ -104,64 +109,41 @@ export class AddressService {
       handleSupabaseError(profileError, 'Failed to clear profile default address');
     }
 
-    return { message: 'Address deleted' };
-  }
-
-  async deleteByIndex(userId: string, index: number): Promise<{ message: string }> {
-    const list = await this.list(userId);
-    if (index < 0 || index >= list.length) {
-      throw new NotFoundException('Address index out of range');
-    }
-
-    const target = list[index];
-    return this.delete(userId, target.id);
+    return { message: 'Address deleted successfully' };
   }
 
   async setDefault(userId: string, addressId: string): Promise<{ message: string }> {
-    const { data: address, error: findError } = await this.client
-      .from('addresses')
-      .select('*')
-      .eq('id', addressId)
-      .eq('user_id', userId)
-      .single();
-
-    if (findError || !address) {
-      throw new NotFoundException('Address not found');
-    }
-
-    const { error: clearError } = await this.client
+    // 1. Unset existing default
+    const { error: unsetError } = await this.client
       .from('addresses')
       .update({ is_default: false })
-      .eq('user_id', userId)
-      .eq('is_default', true);
+      .eq('user_id', userId);
+    
+    handleSupabaseError(unsetError, 'Failed to unset current default address');
 
-    handleSupabaseError(clearError, 'Failed to clear existing default address');
-
-    const { error: setError } = await this.client
+    // 2. Set new default
+    const { data: address, error: setError } = await this.client
       .from('addresses')
       .update({ is_default: true })
       .eq('id', addressId)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select('value')
+      .single();
+    
+    handleSupabaseError(setError, 'Failed to set new default address');
 
-    handleSupabaseError(setError, 'Failed to set default address');
+    if (!address) {
+      throw new NotFoundException('Address not found');
+    }
 
+    // 3. Update profile
     const { error: profileError } = await this.client
       .from('profiles')
       .update({ default_address: address.value })
       .eq('user_id', userId);
-
-    handleSupabaseError(profileError, 'Failed to sync default address to profile');
+    
+    handleSupabaseError(profileError, 'Failed to update profile default address');
 
     return { message: 'Default address updated' };
-  }
-
-  async setDefaultByIndex(userId: string, index: number): Promise<{ message: string }> {
-    const list = await this.list(userId);
-    if (index < 0 || index >= list.length) {
-      throw new NotFoundException('Address index out of range');
-    }
-
-    const target = list[index];
-    return this.setDefault(userId, target.id);
   }
 }

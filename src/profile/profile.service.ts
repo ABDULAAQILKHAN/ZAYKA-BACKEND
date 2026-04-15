@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapProfileRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class ProfileService {
@@ -19,7 +20,7 @@ export class ProfileService {
       .order('created_at', { ascending: false });
 
     handleSupabaseError(error, 'Failed to fetch profiles');
-    return (data ?? []).map(mapProfileRow);
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOne(id: string) {
@@ -33,21 +34,16 @@ export class ProfileService {
       throw new NotFoundException(`Profile with ID ${id} not found`);
     }
 
-    const profile = mapProfileRow(data);
-    (profile as any).totalCertificates = 0;
-    (profile as any).totalPublicCertificates = 0;
+    const profile = toCamelCase(data);
+    profile.totalCertificates = 0;
+    profile.totalPublicCertificates = 0;
     return profile;
   }
 
   async update(id: string, updateProfileDto: UpdateProfileDto) {
     const { id: _, sub: __, email: ___, ...updateData } = updateProfileDto as any;
 
-    const payload: Record<string, unknown> = {};
-    if (updateData.name !== undefined) payload.name = updateData.name;
-    if (updateData.phone !== undefined) payload.phone = updateData.phone;
-    if (updateData.avatar !== undefined) payload.avatar = updateData.avatar;
-    if (updateData.defaultAddress !== undefined) payload.default_address = updateData.defaultAddress;
-    if (updateData.isDark !== undefined) payload.is_dark = updateData.isDark;
+    const payload = toSnakeCase(updateData);
 
     const { data, error } = await this.client
       .from('profiles')
@@ -60,7 +56,7 @@ export class ProfileService {
       throw new NotFoundException(`Profile with ID ${id} not found`);
     }
 
-    return mapProfileRow(data);
+    return toCamelCase(data);
   }
 
   async updateTheme(id: string) {
@@ -77,7 +73,7 @@ export class ProfileService {
       throw new NotFoundException(`Profile with ID ${id} not found`);
     }
 
-    return mapProfileRow(data);
+    return toCamelCase(data);
   }
 
   async getTheme(id: string) {

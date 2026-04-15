@@ -4,6 +4,7 @@ import { Invoice } from './entities/invoice.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { createAdminClient } from '../lib/supabase-server';
 import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 const TAX_RATE = 0.05; // 5% GST
 
@@ -48,22 +49,24 @@ export class InvoicesService {
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax;
 
+    const payload = toSnakeCase({
+      referenceId,
+      referenceType,
+      subtotal,
+      tax,
+      total,
+      paymentMethod: paymentMethod || 'cash',
+      status: 'paid',
+    });
+
     const { data, error } = await this.client
       .from('invoices')
-      .insert({
-        reference_id: referenceId,
-        reference_type: referenceType,
-        subtotal,
-        tax,
-        total,
-        payment_method: paymentMethod || 'cash',
-        status: 'paid',
-      })
+      .insert(payload)
       .select()
       .single();
 
     handleSupabaseError(error, 'Failed to create invoice');
-    return this.mapInvoiceRow(data);
+    return toCamelCase(data);
   }
 
   async findOne(id: string): Promise<Invoice> {
@@ -77,22 +80,6 @@ export class InvoicesService {
       throw new NotFoundException(`Invoice with ID ${id} not found`);
     }
 
-    return this.mapInvoiceRow(data);
-  }
-
-  private mapInvoiceRow(row: any): Invoice {
-    if (!row) return row;
-    return {
-      id: row.id,
-      referenceId: row.reference_id,
-      referenceType: row.reference_type,
-      subtotal: Number(row.subtotal),
-      tax: Number(row.tax),
-      discount: Number(row.discount ?? 0),
-      total: Number(row.total),
-      status: row.status,
-      paymentMethod: row.payment_method,
-      createdAt: row.created_at,
-    };
+    return toCamelCase(data);
   }
 }

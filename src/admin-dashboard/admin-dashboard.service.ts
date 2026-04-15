@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { DashboardStatsDto } from './dto/dashboard-stats.dto';
 import { RecentOrderDto } from './dto/recent-order.dto';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapOrderRow, mapProfileRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
 import { OrderStatus } from '../orders/entities/order.entity';
+import { toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class AdminDashboardService {
@@ -98,32 +99,6 @@ export class AdminDashboardService {
       .limit(limit);
 
     handleSupabaseError(ordersError, 'Failed to fetch recent orders');
-
-    const orders = (orderRows ?? []).map(mapOrderRow);
-    const userIds = [...new Set(orders.map((order) => order.userId).filter(Boolean))];
-
-    let profileMap = new Map<string, string>();
-    if (userIds.length > 0) {
-      const { data: profileRows, error: profilesError } = await this.client
-        .from('profiles')
-        .select('*')
-        .in('user_id', userIds);
-
-      handleSupabaseError(profilesError, 'Failed to fetch profiles for recent orders');
-
-      profileMap = new Map((profileRows ?? []).map((row) => {
-        const profile = mapProfileRow(row);
-        return [profile.userId, profile.name || 'Guest'];
-      }));
-    }
-
-    return orders.map((order) => ({
-      id: order.id,
-      customerName: profileMap.get(order.userId) ?? 'Guest',
-      itemsSummary: order.items.map((item) => item.name),
-      totalAmount: Number(order.total),
-      status: order.status,
-      createdAt: order.createdAt,
-    }));
+    return (orderRows ?? []).map(row => toCamelCase(row));
   }
 }

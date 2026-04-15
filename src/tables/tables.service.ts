@@ -4,6 +4,7 @@ import { Table, TableStatus } from './entities/table.entity';
 import { CreateTableDto, UpdateTableDto } from './dto';
 import { createAdminClient } from '../lib/supabase-server';
 import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class TablesService {
@@ -24,19 +25,19 @@ export class TablesService {
       throw new BadRequestException(`Table with number ${createTableDto.tableNumber} already exists`);
     }
 
+    const payload = toSnakeCase({
+      ...createTableDto,
+      status: TableStatus.AVAILABLE,
+    });
+
     const { data, error } = await this.client
       .from('tables')
-      .insert({
-        table_number: createTableDto.tableNumber,
-        seats: createTableDto.seats ?? 4,
-        location: createTableDto.location ?? null,
-        status: TableStatus.AVAILABLE,
-      })
+      .insert(payload)
       .select()
       .single();
 
     handleSupabaseError(error, 'Failed to create table');
-    return this.mapTableRow(data);
+    return toCamelCase(data);
   }
 
   async findAll(status?: TableStatus): Promise<Table[]> {
@@ -49,7 +50,7 @@ export class TablesService {
     const { data, error } = await query;
     handleSupabaseError(error, 'Failed to fetch tables');
 
-    const tables = (data ?? []).map((row) => this.mapTableRow(row));
+    const tables = (data ?? []).map((row) => toCamelCase(row));
 
     for (const table of tables) {
       const { count } = await this.client
@@ -75,7 +76,7 @@ export class TablesService {
       throw new NotFoundException(`Table with ID ${id} not found`);
     }
 
-    const table = this.mapTableRow(data);
+    const table = toCamelCase(data);
 
     const { count } = await this.client
       .from('orders')
@@ -91,10 +92,7 @@ export class TablesService {
   async update(id: string, updateTableDto: UpdateTableDto): Promise<Table> {
     await this.findOne(id);
 
-    const payload: Record<string, unknown> = {};
-    if (updateTableDto.seats !== undefined) payload.seats = updateTableDto.seats;
-    if (updateTableDto.status !== undefined) payload.status = updateTableDto.status;
-    if (updateTableDto.location !== undefined) payload.location = updateTableDto.location;
+    const payload = toSnakeCase(updateTableDto);
 
     const { data, error } = await this.client
       .from('tables')
@@ -104,7 +102,7 @@ export class TablesService {
       .single();
 
     handleSupabaseError(error, 'Failed to update table');
-    return this.mapTableRow(data);
+    return toCamelCase(data);
   }
 
   async remove(id: string): Promise<void> {
@@ -112,18 +110,5 @@ export class TablesService {
 
     const { error } = await this.client.from('tables').delete().eq('id', id);
     handleSupabaseError(error, 'Failed to delete table');
-  }
-
-  private mapTableRow(row: any): Table {
-    if (!row) return row;
-    return {
-      id: row.id,
-      tableNumber: row.table_number,
-      seats: row.seats,
-      status: row.status,
-      location: row.location,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
   }
 }

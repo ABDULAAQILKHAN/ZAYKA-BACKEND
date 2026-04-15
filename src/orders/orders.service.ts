@@ -9,7 +9,8 @@ import { MenuItemsService } from '../menu-items/menu-items.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapOrderRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 const TAX_RATE = 0.05;
 const DELIVERY_FEE = 40;
@@ -88,24 +89,26 @@ export class OrdersService {
     estimatedCompletionTime.setMinutes(estimatedCompletionTime.getMinutes() + ESTIMATED_PREP_TIME_MINUTES);
 
     // 5. Create Order
+    const orderPayload = toSnakeCase({
+      userId,
+      subtotal,
+      tax,
+      deliveryFee,
+      total,
+      status: OrderStatus.PENDING,
+      orderType,
+      tableId: tableId || null,
+      sessionId,
+      deliveryAddress,
+      deliveryInstructions: deliveryInstructions || null,
+      customerName: profile.name || 'Customer',
+      customerPhone: profile.phone || '',
+      estimatedCompletionTime: estimatedCompletionTime.toISOString(),
+    });
+
     const { data: orderData, error: orderError } = await this.client
       .from('orders')
-      .insert({
-        user_id: userId,
-        subtotal,
-        tax,
-        delivery_fee: deliveryFee,
-        total,
-        status: OrderStatus.PENDING,
-        order_type: orderType,
-        table_id: tableId || null,
-        session_id: sessionId,
-        delivery_address: deliveryAddress,
-        delivery_instructions: deliveryInstructions || null,
-        customer_name: profile.name || 'Customer',
-        customer_phone: profile.phone || '',
-        estimated_completion_time: estimatedCompletionTime.toISOString(),
-      })
+      .insert(orderPayload)
       .select('id')
       .single();
 
@@ -115,9 +118,9 @@ export class OrdersService {
     }
 
     // 6. Create Order Items
-    const orderItemsPayload = orderItemsWithPrice.map((item) => ({
-      order_id: orderData.id,
-      menu_item_id: item.id,
+    const orderItemsPayload = orderItemsWithPrice.map((item) => toSnakeCase({
+      orderId: orderData.id,
+      menuItemId: item.id,
       name: item.name,
       quantity: item.quantity,
       price: item.price,
@@ -157,7 +160,7 @@ export class OrdersService {
     });
 
     return {
-      order: mapOrderRow(updatedOrder),
+      order: toCamelCase(updatedOrder),
       invoice,
     };
   }
@@ -177,7 +180,7 @@ export class OrdersService {
       .order('created_at', { ascending: true });
 
     handleSupabaseError(error, 'Failed to fetch active orders');
-    return (data ?? []).map(mapOrderRow) as Order[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOrderHistory(): Promise<Order[]> {
@@ -190,7 +193,7 @@ export class OrdersService {
       .order('created_at', { ascending: false });
 
     handleSupabaseError(error, 'Failed to fetch order history');
-    return (data ?? []).map(mapOrderRow) as Order[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findMyOrders(userId: string): Promise<Order[]> {
@@ -201,7 +204,7 @@ export class OrdersService {
       .order('created_at', { ascending: false });
 
     handleSupabaseError(error, 'Failed to fetch user orders');
-    return (data ?? []).map(mapOrderRow) as Order[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findAll(): Promise<Order[]> {
@@ -211,7 +214,7 @@ export class OrdersService {
       .order('created_at', { ascending: false });
 
     handleSupabaseError(error, 'Failed to fetch all orders');
-    return (data ?? []).map(mapOrderRow) as Order[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findByStatus(status: string): Promise<Order[]> {
@@ -222,7 +225,7 @@ export class OrdersService {
       .order('created_at', { ascending: true });
 
     handleSupabaseError(error, 'Failed to fetch orders by status');
-    return (data ?? []).map(mapOrderRow) as Order[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOne(orderId: string, userId?: string): Promise<Order> {
@@ -238,7 +241,7 @@ export class OrdersService {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
 
-    return mapOrderRow(data) as Order;
+    return toCamelCase(data);
   }
 
   async updateStatus(orderId: string, updateStatusDto: UpdateOrderStatusDto): Promise<Order> {

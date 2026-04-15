@@ -4,7 +4,8 @@ import { TodaysSpecial } from './entities/todays-special.entity';
 import { CreateTodaysSpecialDto } from './dto/create-todays-special.dto';
 import { UpdateTodaysSpecialDto } from './dto/update-todays-special.dto';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapTodaysSpecialRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class TodaysSpecialsService {
@@ -15,15 +16,7 @@ export class TodaysSpecialsService {
   }
 
   async create(createTodaysSpecialDto: CreateTodaysSpecialDto): Promise<TodaysSpecial> {
-    const payload = {
-      name: createTodaysSpecialDto.name,
-      description: createTodaysSpecialDto.description,
-      price: createTodaysSpecialDto.price,
-      image: createTodaysSpecialDto.image,
-      category: createTodaysSpecialDto.category,
-      is_veg: createTodaysSpecialDto.isVeg ?? false,
-      is_active: createTodaysSpecialDto.isActive ?? true,
-    };
+    const payload = toSnakeCase(createTodaysSpecialDto);
 
     const { data, error } = await this.client
       .from('todays_specials')
@@ -32,7 +25,7 @@ export class TodaysSpecialsService {
       .single();
 
     handleSupabaseError(error, 'Failed to create today\'s special');
-    return mapTodaysSpecialRow(data) as TodaysSpecial;
+    return toCamelCase(data);
   }
 
   async findAll(active?: boolean): Promise<TodaysSpecial[]> {
@@ -44,7 +37,7 @@ export class TodaysSpecialsService {
 
     const { data, error } = await query;
     handleSupabaseError(error, 'Failed to fetch today\'s specials');
-    return (data ?? []).map(mapTodaysSpecialRow) as TodaysSpecial[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOne(id: string): Promise<TodaysSpecial> {
@@ -58,20 +51,13 @@ export class TodaysSpecialsService {
       throw new NotFoundException(`Today's special with ID ${id} not found`);
     }
 
-    return mapTodaysSpecialRow(data) as TodaysSpecial;
+    return toCamelCase(data);
   }
 
   async update(id: string, updateTodaysSpecialDto: UpdateTodaysSpecialDto): Promise<TodaysSpecial> {
     await this.findOne(id);
 
-    const payload: Record<string, unknown> = {};
-    if (updateTodaysSpecialDto.name !== undefined) payload.name = updateTodaysSpecialDto.name;
-    if (updateTodaysSpecialDto.description !== undefined) payload.description = updateTodaysSpecialDto.description;
-    if (updateTodaysSpecialDto.price !== undefined) payload.price = updateTodaysSpecialDto.price;
-    if (updateTodaysSpecialDto.image !== undefined) payload.image = updateTodaysSpecialDto.image;
-    if (updateTodaysSpecialDto.category !== undefined) payload.category = updateTodaysSpecialDto.category;
-    if (updateTodaysSpecialDto.isVeg !== undefined) payload.is_veg = updateTodaysSpecialDto.isVeg;
-    if (updateTodaysSpecialDto.isActive !== undefined) payload.is_active = updateTodaysSpecialDto.isActive;
+    const payload = toSnakeCase(updateTodaysSpecialDto);
 
     const { data, error } = await this.client
       .from('todays_specials')
@@ -80,11 +66,8 @@ export class TodaysSpecialsService {
       .select('*')
       .single();
 
-    if (error || !data) {
-      throw new NotFoundException(`Today's special with ID ${id} not found`);
-    }
-
-    return mapTodaysSpecialRow(data) as TodaysSpecial;
+    handleSupabaseError(error, 'Failed to update today\'s special');
+    return toCamelCase(data);
   }
 
   async remove(id: string): Promise<void> {

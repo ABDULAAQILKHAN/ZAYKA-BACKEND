@@ -4,7 +4,8 @@ import { MenuCategory } from './entities/menu-category.entity';
 import { CreateMenuCategoryDto } from './dto/create-menu-category.dto';
 import { UpdateMenuCategoryDto } from './dto/update-menu-category.dto';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapMenuCategoryRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class MenuCategoriesService {
@@ -25,13 +26,7 @@ export class MenuCategoriesService {
       throw new ConflictException(`Category with name "${createMenuCategoryDto.name}" already exists`);
     }
 
-    const payload = {
-      name: createMenuCategoryDto.name,
-      description: createMenuCategoryDto.description ?? null,
-      image: createMenuCategoryDto.image ?? null,
-      is_active: createMenuCategoryDto.isActive ?? true,
-      sort_order: createMenuCategoryDto.sortOrder ?? 0,
-    };
+    const payload = toSnakeCase(createMenuCategoryDto);
 
     const { data, error } = await this.client
       .from('menu_categories')
@@ -40,7 +35,7 @@ export class MenuCategoriesService {
       .single();
 
     handleSupabaseError(error, 'Failed to create category');
-    return mapMenuCategoryRow(data) as MenuCategory;
+    return toCamelCase(data);
   }
 
   async findAll(activeOnly?: boolean): Promise<MenuCategory[]> {
@@ -56,7 +51,7 @@ export class MenuCategoriesService {
 
     const { data, error } = await query;
     handleSupabaseError(error, 'Failed to fetch categories');
-    return (data ?? []).map(mapMenuCategoryRow) as MenuCategory[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOne(id: string): Promise<MenuCategory> {
@@ -70,7 +65,7 @@ export class MenuCategoriesService {
       throw new NotFoundException(`Menu category with ID "${id}" not found`);
     }
 
-    return mapMenuCategoryRow(data) as MenuCategory;
+    return toCamelCase(data);
   }
 
   async update(id: string, updateMenuCategoryDto: UpdateMenuCategoryDto): Promise<MenuCategory> {
@@ -88,12 +83,7 @@ export class MenuCategoriesService {
       }
     }
 
-    const payload: Record<string, unknown> = {};
-    if (updateMenuCategoryDto.name !== undefined) payload.name = updateMenuCategoryDto.name;
-    if (updateMenuCategoryDto.description !== undefined) payload.description = updateMenuCategoryDto.description;
-    if (updateMenuCategoryDto.image !== undefined) payload.image = updateMenuCategoryDto.image;
-    if (updateMenuCategoryDto.isActive !== undefined) payload.is_active = updateMenuCategoryDto.isActive;
-    if (updateMenuCategoryDto.sortOrder !== undefined) payload.sort_order = updateMenuCategoryDto.sortOrder;
+    const payload = toSnakeCase(updateMenuCategoryDto);
 
     const { data, error } = await this.client
       .from('menu_categories')
@@ -102,11 +92,8 @@ export class MenuCategoriesService {
       .select('*')
       .single();
 
-    if (error || !data) {
-      throw new NotFoundException(`Menu category with ID "${id}" not found`);
-    }
-
-    return mapMenuCategoryRow(data) as MenuCategory;
+    handleSupabaseError(error, 'Failed to update category');
+    return toCamelCase(data);
   }
 
   async remove(id: string): Promise<{ message: string }> {

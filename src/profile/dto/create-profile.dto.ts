@@ -12,7 +12,7 @@ export class CreateProfileDto {
   @IsString()
   @MinLength(2, { message: 'name must be at least 2 characters long' })
   @Transform(({ value }) => value?.trim())
-  full_name: string;
+  name: string;
 
   @ApiProperty({ example: 'john.doe@example.com', description: 'Email address' })
   @IsEmail({}, { message: 'Please provide a valid email address' })

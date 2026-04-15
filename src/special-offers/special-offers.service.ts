@@ -4,7 +4,8 @@ import { SpecialOffer } from './entities/special-offer.entity';
 import { CreateSpecialOfferDto } from './dto/create-special-offer.dto';
 import { UpdateSpecialOfferDto } from './dto/update-special-offer.dto';
 import { createAdminClient } from '../lib/supabase-server';
-import { handleSupabaseError, mapSpecialOfferRow } from '../lib/supabase-mappers';
+import { handleSupabaseError } from '../lib/supabase-mappers';
+import { toSnakeCase, toCamelCase } from '../common/utils/case-mapper';
 
 @Injectable()
 export class SpecialOffersService {
@@ -15,13 +16,7 @@ export class SpecialOffersService {
   }
 
   async create(createSpecialOfferDto: CreateSpecialOfferDto): Promise<SpecialOffer> {
-    const payload = {
-      title: createSpecialOfferDto.title,
-      description: createSpecialOfferDto.description,
-      image: createSpecialOfferDto.image,
-      link: createSpecialOfferDto.link ?? null,
-      is_active: createSpecialOfferDto.isActive ?? true,
-    };
+    const payload = toSnakeCase(createSpecialOfferDto);
 
     const { data, error } = await this.client
       .from('special_offers')
@@ -30,7 +25,7 @@ export class SpecialOffersService {
       .single();
 
     handleSupabaseError(error, 'Failed to create special offer');
-    return mapSpecialOfferRow(data) as SpecialOffer;
+    return toCamelCase(data);
   }
 
   async findAll(active?: boolean): Promise<SpecialOffer[]> {
@@ -42,7 +37,7 @@ export class SpecialOffersService {
 
     const { data, error } = await query;
     handleSupabaseError(error, 'Failed to fetch special offers');
-    return (data ?? []).map(mapSpecialOfferRow) as SpecialOffer[];
+    return (data ?? []).map(row => toCamelCase(row));
   }
 
   async findOne(id: string): Promise<SpecialOffer> {
@@ -56,18 +51,13 @@ export class SpecialOffersService {
       throw new NotFoundException(`Special offer with ID ${id} not found`);
     }
 
-    return mapSpecialOfferRow(data) as SpecialOffer;
+    return toCamelCase(data);
   }
 
   async update(id: string, updateSpecialOfferDto: UpdateSpecialOfferDto): Promise<SpecialOffer> {
     await this.findOne(id);
 
-    const payload: Record<string, unknown> = {};
-    if (updateSpecialOfferDto.title !== undefined) payload.title = updateSpecialOfferDto.title;
-    if (updateSpecialOfferDto.description !== undefined) payload.description = updateSpecialOfferDto.description;
-    if (updateSpecialOfferDto.image !== undefined) payload.image = updateSpecialOfferDto.image;
-    if (updateSpecialOfferDto.link !== undefined) payload.link = updateSpecialOfferDto.link;
-    if (updateSpecialOfferDto.isActive !== undefined) payload.is_active = updateSpecialOfferDto.isActive;
+    const payload = toSnakeCase(updateSpecialOfferDto);
 
     const { data, error } = await this.client
       .from('special_offers')
@@ -76,11 +66,8 @@ export class SpecialOffersService {
       .select('*')
       .single();
 
-    if (error || !data) {
-      throw new NotFoundException(`Special offer with ID ${id} not found`);
-    }
-
-    return mapSpecialOfferRow(data) as SpecialOffer;
+    handleSupabaseError(error, 'Failed to update special offer');
+    return toCamelCase(data);
   }
 
   async remove(id: string): Promise<void> {
