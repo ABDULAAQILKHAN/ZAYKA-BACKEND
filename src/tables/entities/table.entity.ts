@@ -25,9 +25,9 @@ export class Table {
   @Column({ type: 'varchar', default: TableStatus.AVAILABLE })
   status: TableStatus;
 
-  @ApiProperty({ example: 'near window', description: 'Table location description', required: false })
-  @Column({ nullable: true })
-  location: string;
+  @ApiProperty({ example: true, description: 'Whether the table is near a window', required: false })
+  @Column({ name: 'table_near_window', type: 'boolean', default: false })
+  tableNearWindow: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -106,7 +106,11 @@ export class TablesService {
   }
 
   async remove(id: string): Promise<void> {
-    await this.findOne(id);
+    const table = await this.findOne(id);
+    
+    if (table.status !== TableStatus.AVAILABLE || (table as any).activeOrderCount > 0) {
+      throw new BadRequestException('Cannot delete an active table. Please ensure the table is available and has no active orders.');
+    }
 
     const { error } = await this.client.from('tables').delete().eq('id', id);
     handleSupabaseError(error, 'Failed to delete table');

@@ -13,8 +13,7 @@ export class CreateTableDto {
   @Min(1)
   seats?: number;
 
-  @ApiProperty({ example: 'near window', description: 'Table location description', required: false })
+  @ApiProperty({ example: true, description: 'Whether the table is near a window', required: false, default: false })
   @IsOptional()
-  @IsString()
-  location?: string;
+  tableNearWindow?: boolean;
 }
