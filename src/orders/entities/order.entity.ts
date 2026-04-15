@@ -4,8 +4,10 @@ import { OrderItem } from './order-item.entity';
 
 export enum OrderStatus {
   PENDING = 'pending',
+  CONFIRMED = 'confirmed',
   PREPARING = 'preparing',
   READY = 'ready',
+  SERVED = 'served',
   OUT_FOR_DELIVERY = 'out-for-delivery',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
@@ -42,6 +44,18 @@ export class Order {
   @ApiProperty({ example: 40, description: 'Delivery fee' })
   @Column({ name: 'delivery_fee', type: 'decimal', precision: 10, scale: 2, default: 0 })
   deliveryFee: number;
+
+  @ApiProperty({ example: 'table', enum: ['table', 'delivery', 'takeaway'] })
+  @Column({ name: 'order_type', default: 'delivery' })
+  orderType: string;
+
+  @ApiProperty({ example: 'table-uuid', required: false })
+  @Column({ name: 'table_id', nullable: true })
+  tableId: string;
+
+  @ApiProperty({ example: 'session-uuid', required: false })
+  @Column({ name: 'session_id', nullable: true })
+  sessionId: string;
 
   @ApiProperty({ enum: OrderStatus, example: 'pending', description: 'Order status' })
   @Column({ type: 'varchar', default: OrderStatus.PENDING })

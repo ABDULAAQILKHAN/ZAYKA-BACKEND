@@ -25,13 +25,21 @@ export class OrdersController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new order from cart' })
+  @ApiOperation({ summary: 'Create a new order' })
   @ApiResponse({ status: 201, description: 'Order created successfully', type: Order })
-  @ApiResponse({ status: 400, description: 'Cart is empty or invalid data' })
-  @ApiResponse({ status: 404, description: 'Address or profile not found' })
   async create(@Request() req: any, @Body() createOrderDto: CreateOrderDto): Promise<Order> {
     const user = getCurrentUser(req);
     return this.ordersService.create(user.id, createOrderDto);
+  }
+
+  @Post('takeaway')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create a takeaway order with immediate invoice' })
+  @ApiResponse({ status: 201, description: 'Takeaway order created successfully' })
+  async createTakeaway(@Request() req: any, @Body() createOrderDto: CreateOrderDto) {
+    const user = getCurrentUser(req);
+    return this.ordersService.createTakeawayOrder(user.id, createOrderDto);
   }
 
   @Get('my')
@@ -45,6 +53,24 @@ export class OrdersController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get active orders (admin/staff)' })
+  @ApiResponse({ status: 200, description: 'Active orders retrieved successfully', type: [Order] })
+  async findActive(): Promise<Order[]> {
+    return this.ordersService.findActiveOrders();
+  }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get order history (admin/staff)' })
+  @ApiResponse({ status: 200, description: 'Order history retrieved successfully', type: [Order] })
+  async findHistory(): Promise<Order[]> {
+    return this.ordersService.findOrderHistory();
+  }
+
+  @Get('all')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get all orders (admin/staff)' })

@@ -10,6 +10,10 @@ import { HealthModule } from './health/health.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
+import { TablesModule } from './tables/tables.module';
+import { SessionsModule } from './sessions/sessions.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { InsightsModule } from './insights/insights.module';
 
 @Module({
   imports: [
@@ -26,6 +30,10 @@ import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
     CartModule,
     OrdersModule,
     AdminDashboardModule,
+    TablesModule,
+    SessionsModule,
+    InvoicesModule,
+    InsightsModule,
   ],
 })
 export class AppModule {}

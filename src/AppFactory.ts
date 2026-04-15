@@ -15,7 +15,7 @@ export class AppFactory {
     const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
     app.enableCors({
-      origin: ['http://localhost:3000', 'https://zaykadarbar.vercel.app'],
+      origin: ['http://localhost:3000', 'https://zaykadarbar.vercel.app', 'http://localhost:3001', 'https://zayka-rims.vercel.app'],
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true,
     });
