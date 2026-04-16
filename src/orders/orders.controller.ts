@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -66,8 +67,12 @@ export class OrdersController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get order history (admin/staff)' })
   @ApiResponse({ status: 200, description: 'Order history retrieved successfully', type: [Order] })
-  async findHistory(): Promise<Order[]> {
-    return this.ordersService.findOrderHistory();
+  async findHistory(
+    @Query('orderType') orderType?: string,
+    @Query('tableId') tableId?: string,
+    @Query('date') date?: string,
+  ): Promise<Order[]> {
+    return this.ordersService.findOrderHistory({ orderType, tableId, date });
   }
 
   @Get('all')

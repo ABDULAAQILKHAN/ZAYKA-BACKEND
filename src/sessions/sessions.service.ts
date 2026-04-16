@@ -20,17 +20,52 @@ export class SessionsService {
     return createAdminClient(this.configService);
   }
 
-  async findAll(status?: SessionStatus): Promise<Session[]> {
+  async findAll(status?: SessionStatus): Promise<any[]> {
     let query = this.client.from('sessions').select('*').order('opened_at', { ascending: false });
 
     if (status) {
       query = query.eq('status', status);
     }
 
-    const { data, error } = await query;
+    const { data: sessions, error } = await query;
     handleSupabaseError(error, 'Failed to fetch sessions');
 
-    return (data ?? []).map(row => toCamelCase(row));
+    if (!sessions) return [];
+
+    // Enrichment: Fetch related tables and orders
+    const sessionIds = sessions.map(s => s.id);
+    const tableIds = Array.from(new Set(sessions.map(s => s.table_id)));
+
+    const [{ data: tables }, { data: orders }] = await Promise.all([
+      this.client.from('tables').select('id, table_number').in('id', tableIds),
+      this.client.from('orders').select('*, order_items(*)').in('session_id', sessionIds),
+    ]);
+
+    const tableMap = new Map((tables ?? []).map(t => [t.id, t.table_number]));
+    const ordersBySession = new Map<string, any[]>();
+    
+    (orders ?? []).forEach(o => {
+      const list = ordersBySession.get(o.session_id) || [];
+      list.push(toCamelCase(o));
+      ordersBySession.set(o.session_id, list);
+    });
+
+    return sessions.map(row => {
+      const sessionOrders = ordersBySession.get(row.id) || [];
+      const subtotal = sessionOrders.reduce((sum, o) => sum + Number(o.subtotal), 0);
+      const gst = sessionOrders.reduce((sum, o) => sum + Number(o.gst || o.tax), 0);
+      const total = sessionOrders.reduce((sum, o) => sum + Number(o.total), 0);
+
+      return {
+        ...toCamelCase(row),
+        tableNumber: tableMap.get(row.table_id),
+        orders: sessionOrders,
+        subtotal,
+        gst,
+        total,
+        createdAt: row.opened_at, // Map opened_at to createdAt for frontend consistency
+      };
+    });
   }
 
   async findOne(id: string): Promise<any> {
@@ -61,7 +96,7 @@ export class SessionsService {
     return session;
   }
 
-  async closeSession(id: string): Promise<Session> {
+  async closeSession(id: string): Promise<any> {
     const session = await this.findOne(id);
     if (session.status === SessionStatus.CLOSED) {
       throw new BadRequestException('Session is already closed');
@@ -73,12 +108,10 @@ export class SessionsService {
       closedAt: new Date().toISOString(),
     });
 
-    const { data: updatedSession, error: sessionError } = await this.client
+    const { error: sessionError } = await this.client
       .from('sessions')
       .update(payload)
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
     handleSupabaseError(sessionError, 'Failed to close session');
 
@@ -95,13 +128,15 @@ export class SessionsService {
     handleSupabaseError(ordersUpdateError, 'Failed to update session orders status');
 
     // 4. Generate invoice
-    await this.invoicesService.create({
+    const invoice = await this.invoicesService.create({
       referenceId: id,
       referenceType: 'session',
       paymentMethod: 'cash', // Default
     });
 
-    return toCamelCase(updatedSession);
+    // Fetch the enriched invoice to return it to the UI
+    const allInvoices = await this.invoicesService.findAll();
+    return allInvoices.find(inv => inv.id === invoice.id);
   }
 
   async findOrCreateActiveSession(tableId: string): Promise<Session> {

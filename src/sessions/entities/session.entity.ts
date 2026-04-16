@@ -27,10 +27,4 @@ export class Session {
   @ApiProperty({ example: '2026-04-15T14:00:00Z', description: 'When the session was closed', required: false })
   @Column({ name: 'closed_at', type: 'timestamptz', nullable: true })
   closedAt: Date;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }

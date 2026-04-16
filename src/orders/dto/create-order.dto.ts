@@ -11,7 +11,7 @@ export enum OrderType {
 class OrderItemDto {
   @ApiProperty({ example: 'menu-item-uuid' })
   @IsUUID()
-  id: string;
+  menuItemId: string;
 
   @ApiProperty({ example: 2 })
   @IsInt()

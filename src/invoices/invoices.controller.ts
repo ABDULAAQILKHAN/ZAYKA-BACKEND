@@ -20,6 +20,15 @@ export class InvoicesController {
     return this.invoicesService.create(createInvoiceDto);
   }
 
+  @Get()
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all invoices (Admin only)' })
+  @ApiResponse({ status: 200, type: [Invoice] })
+  findAll() {
+    return this.invoicesService.findAll();
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')

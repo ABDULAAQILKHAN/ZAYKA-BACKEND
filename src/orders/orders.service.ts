@@ -26,7 +26,7 @@ export class OrdersService {
     private readonly menuItemsService: MenuItemsService,
     private readonly sessionsService: SessionsService,
     private readonly invoicesService: InvoicesService,
-  ) {}
+  ) { }
 
   private get client() {
     return createAdminClient(this.configService);
@@ -40,15 +40,15 @@ export class OrdersService {
     }
 
     // 1. Fetch menu items to get real prices
-    const itemIds = items.map(i => i.id);
+    const itemIds = items.map(i => i.menuItemId);
     const menuItems = await Promise.all(itemIds.map(id => this.menuItemsService.findOne(id)));
-    
+
     const orderItemsWithPrice = items.map(item => {
-      const menuItem = menuItems.find(mi => mi.id === item.id);
-      if (!menuItem) throw new NotFoundException(`Menu item ${item.id} not found`);
-      
+      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+      if (!menuItem) throw new NotFoundException(`Menu item ${item.menuItemId} not found`);
+
       const price = item.size === 'Half' && menuItem.halfPrice ? menuItem.halfPrice : menuItem.fullPrice;
-      
+
       return {
         ...item,
         name: menuItem.name,
@@ -120,7 +120,7 @@ export class OrdersService {
     // 6. Create Order Items
     const orderItemsPayload = orderItemsWithPrice.map((item) => toSnakeCase({
       orderId: orderData.id,
-      menuItemId: item.id,
+      menuItemId: item.menuItemId,
       name: item.name,
       quantity: item.quantity,
       price: item.price,
@@ -149,7 +149,7 @@ export class OrdersService {
       .eq('id', order.id)
       .select()
       .single();
-    
+
     handleSupabaseError(updateError, 'Failed to update takeaway order status');
 
     // 3. Generate invoice
@@ -159,9 +159,13 @@ export class OrdersService {
       paymentMethod: 'cash', // Default for takeaway
     });
 
+    // Enriched invoice retrieval
+    const allInvoices = await this.invoicesService.findAll();
+    const enrichedInvoice = allInvoices.find(inv => inv.id === invoice.id);
+
     return {
       order: toCamelCase(updatedOrder),
-      invoice,
+      invoice: enrichedInvoice || invoice,
     };
   }
 
@@ -183,14 +187,29 @@ export class OrdersService {
     return (data ?? []).map(row => toCamelCase(row));
   }
 
-  async findOrderHistory(): Promise<Order[]> {
+  async findOrderHistory(filters?: { orderType?: string; tableId?: string; date?: string }): Promise<Order[]> {
     const historyStatuses = [OrderStatus.DELIVERED, OrderStatus.CANCELLED];
 
-    const { data, error } = await this.client
+    let query = this.client
       .from('orders')
       .select('*, order_items(*)')
-      .in('status', historyStatuses)
-      .order('created_at', { ascending: false });
+      .in('status', historyStatuses);
+
+    if (filters?.orderType) {
+      query = query.eq('order_type', filters.orderType);
+    }
+    if (filters?.tableId) {
+      query = query.eq('table_id', filters.tableId);
+    }
+    if (filters?.date) {
+      const start = new Date(filters.date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(filters.date);
+      end.setHours(23, 59, 59, 999);
+      query = query.gte('created_at', start.toISOString()).lte('created_at', end.toISOString());
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     handleSupabaseError(error, 'Failed to fetch order history');
     return (data ?? []).map(row => toCamelCase(row));
